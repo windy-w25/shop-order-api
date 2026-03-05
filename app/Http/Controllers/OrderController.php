@@ -101,7 +101,10 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        //
+        // http://127.0.0.1:8000/api/orders/1
+        
+        $order->load('items.product');
+        return response()->json($order);
     }
 
     public function edit(Order $order)
