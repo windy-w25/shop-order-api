@@ -102,9 +102,31 @@ class OrderController extends Controller
     public function show(Order $order)
     {
         // http://127.0.0.1:8000/api/orders/1
-        
+
         $order->load('items.product');
         return response()->json($order);
+    }
+
+    public function cancel(Order $order)
+    {
+        if ($order->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only pending orders can be cancelled'
+            ], 422);
+        }
+
+        DB::transaction(function() use ($order) {
+            foreach ($order->items as $item) {
+                $item->product->increment('stock', $item->quantity);
+            }
+            $order->update(['status' => 'cancelled']);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order cancelled'
+        ]);
     }
 
     public function edit(Order $order)
