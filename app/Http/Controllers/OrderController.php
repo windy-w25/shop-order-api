@@ -38,19 +38,14 @@ class OrderController extends Controller
         return response()->json($orders);
     }
 
-    public function create()
-    {
-        //
-    }
-
     public function store(StoreOrderRequest $request)
     {
 
         // {
         //     "shop_id": 1,
         //     "items": [
-        //         { "product_id": 1, "qty": 2 },
-        //         { "product_id": 2, "qty": 1 }
+        //         { "product_id": 2, "qty": 3 },
+        //         { "product_id": 3, "qty": 10 }
         //     ]
         // }
 
@@ -109,6 +104,9 @@ class OrderController extends Controller
 
     public function cancel(Order $order)
     {
+
+        //http://127.0.0.1:8000/api/orders/1/cancel
+
         if ($order->status !== 'pending') {
             return response()->json([
                 'success' => false,
