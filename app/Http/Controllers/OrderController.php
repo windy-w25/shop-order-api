@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use App\Http\Requests\StoreOrderRequest;
 use App\Models\Order;
 use App\Models\Product;
@@ -11,27 +12,48 @@ use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
+
+    public function index(Request $request){
+        // http://127.0.0.1:8000/api/orders?shop_id=1&status=pending&from=2026-03-01&to=2026-03-10
+
+        $query = Order::with('items.product');
+        if ($request->has('shop_id')) {
+            $query->where('shop_id', $request->shop_id);
+        }
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('from')) {
+            $query->whereDate('created_at', '>=', $request->from);
+        }
+
+        if ($request->has('to')) {
+            $query->whereDate('created_at', '<=', $request->to);
+        }
+
+        $orders = $query->paginate(10);
+
+        return response()->json($orders);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreOrderRequest $request)
     {
+
+        // {
+        //     "shop_id": 1,
+        //     "items": [
+        //         { "product_id": 1, "qty": 2 },
+        //         { "product_id": 2, "qty": 1 }
+        //     ]
+        // }
+
         $data = $request->validated();
 
         $order = DB::transaction(function () use ($data) {
@@ -77,33 +99,22 @@ class OrderController extends Controller
         ], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Order $order)
     {
         //
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Order $order)
     {
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+
     public function update(Request $request, Order $order)
     {
         //
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Order $order)
     {
         //
