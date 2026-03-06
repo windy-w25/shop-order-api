@@ -38,17 +38,9 @@ class OrderController extends Controller
         return response()->json($orders);
     }
 
+
     public function store(StoreOrderRequest $request)
     {
-
-        // {
-        //     "shop_id": 1,
-        //     "items": [
-        //         { "product_id": 2, "qty": 3 },
-        //         { "product_id": 3, "qty": 10 }
-        //     ]
-        // }
-
         $data = $request->validated();
 
         $order = DB::transaction(function () use ($data) {
@@ -63,10 +55,12 @@ class OrderController extends Controller
 
             foreach ($data['items'] as $item) {
 
-                $product = Product::lockForUpdate()->find($item['product_id']);
+                $product = Product::where('id', $item['product_id'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
                 if ($product->stock < $item['qty']) {
-                    throw new \Exception("Not enough stock for product {$product->name}");
+                    abort(400, "Not enough stock for product {$product->name}");
                 }
 
                 $product->decrement('stock', $item['qty']);
@@ -89,9 +83,17 @@ class OrderController extends Controller
         });
 
         return response()->json([
-            'success' => true,
+            'message' => 'Order created successfully',
             'data' => $order
         ], 201);
+
+        // {
+        //     "shop_id": 1,
+        //     "items": [
+        //         { "product_id": 2, "qty": 3 },
+        //         { "product_id": 3, "qty": 10 }
+        //     ]
+        // }
     }
 
     public function show(Order $order)
