@@ -8,6 +8,7 @@ The system ensures data consistency using database transactions and row-level lo
 
 1. Clone the repository
 git clone https://github.com/windy-w25/shop-order-api.git
+
 cd shop-order-api
 
 2. Install dependencies
@@ -74,36 +75,36 @@ php artisan test --filter=CreateOrderTest
 - Stock must be available before creating an order.
 
 
-## Part 3 – Architecture & Design Question
+## Architecture & Design Question
 
-# Asynchronous Payments and Refunds Design
+### Asynchronous Payments and Refunds Design
 
 To support asynchronous payments and refunds, I would use Laravel queues, webhook handling, and proper database safeguards to ensure reliable processing.
 
-# Queue Structure
+### Queue Structure
 
 Payment and refund processing would run through Laravel queue jobs instead of executing directly in the request. When a webhook is received, the system would dispatch a job such as ProcessPaymentWebhook or ProcessRefundWebhook. This keeps the webhook response fast and allows the heavy processing to happen in the background. Laravel queue workers would handle these jobs using Redis or database queues.
 
-# Idempotency
+### Idempotency
 
 To ensure the same webhook is not processed multiple times, each payment event from the payment provider should include a unique event ID. This ID would be stored in the database in a payment_events or webhook_events table. Before processing a webhook, the system would check whether that event ID already exists. If it does, the request would simply be ignored.
 
-# Preventing Duplicate Processing
+### Preventing Duplicate Processing
 
 Duplicate processing can also be prevented at the database level. Unique constraints can be applied to fields such as payment_provider_event_id or transaction_id. This ensures that even if a job runs twice, the database will reject duplicates.
 
-# Webhook Validation
+### Webhook Validation
 
 For security, webhook requests should be verified before processing. Most payment providers send a signature header. The application should validate this signature using a shared secret to confirm that the request really came from the payment provider and was not modified.
 
-# Retry Strategy
+### Retry Strategy
 
 If a queue job fails due to temporary issues such as network errors, Laravel’s built-in retry system can automatically retry the job several times with delays. This helps handle temporary failures without losing the event.
 
-# Failure Handling
+### Failure Handling
 
 If a job continues to fail after multiple retries, it will be moved to Laravel’s failed jobs table. These failed jobs can be monitored and manually retried after the issue is resolved.
 
-# Database Design
+### Database Design
 
 The database should include tables for payments, refunds, and webhook events. Storing webhook event IDs and transaction IDs ensures traceability and helps enforce idempotency. Proper indexing and unique constraints help maintain consistency and prevent duplicate records.
