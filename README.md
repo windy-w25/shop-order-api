@@ -75,6 +75,12 @@ php artisan test --filter=CreateOrderTest
 - Stock must be available before creating an order.
 
 
+## Debug & Concurrency Problem
+
+1. The issue occurs because multiple transactions read the same stock value simultaneously before it is updated. Since the stock check and update are not performed atomically with a database lock, concurrent requests can reduce stock below zero.
+
+2. To prevent negative stock during concurrent order placement, the application uses database transactions combined with lockForUpdate() to ensure row-level locking. This guarantees that stock validation and updates occur atomically, preventing race conditions.
+
 ## Architecture & Design Question
 
 ### Asynchronous Payments and Refunds Design
