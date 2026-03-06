@@ -1,59 +1,109 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Shop Order Management API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project is a RESTful API built with Laravel 10 for managing shop orders, products, and inventory. 
+The API allows shops to create orders, manage stock, cancel orders, and generate reports such as top-selling products.
+The system ensures data consistency using database transactions and row-level locking to prevent concurrency issues during stock updates.
 
-## About Laravel
+## Setup Instructions
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+1. Clone the repository
+git clone https://github.com/windy-w25/shop-order-api.git
+cd shop-order-api
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+2. Install dependencies
+composer install
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+3. Copy environment file
+cp .env.example .env
 
-## Learning Laravel
+4. Generate application key
+php artisan key:generate
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Environment Configuration
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Update the ,env file with your database configuration.
+Example:
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=shop_order_db
+DB_USERNAME=root
+DB_PASSWORD=
 
-## Laravel Sponsors
+## Running the Application
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+php artisan migrate
 
-### Premium Partners
+Start the server:
+php artisan serve
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+API will be available at:
+http://127.0.0.1:8000
 
-## Contributing
+## API Endpoints
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Create Order
+POST /api/orders
 
-## Code of Conduct
+Get Orders
+GET /api/orders
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Get Single Order
+GET /api/orders/{id}
 
-## Security Vulnerabilities
+Cancel Order
+PATCH /api/orders/{id}/cancel
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Top Products Report
+GET /api/reports/top-products
 
-## License
+## Running Tests
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Run all tests:
+php artisan test
+
+Run specific test:
+php artisan test --filter=CreateOrderTest
+
+## Assumptions
+
+- Products must exist before placing an order.
+- Each order belongs to one shop.
+- Product price at the time of purchase is stored in the order_items table.
+- Orders with status "cancelled" cannot be cancelled again.
+- Stock must be available before creating an order.
+
+
+## Part 3 – Architecture & Design Question
+
+# Asynchronous Payments and Refunds Design
+
+To support asynchronous payments and refunds, I would use Laravel queues, webhook handling, and proper database safeguards to ensure reliable processing.
+
+# Queue Structure
+
+Payment and refund processing would run through Laravel queue jobs instead of executing directly in the request. When a webhook is received, the system would dispatch a job such as ProcessPaymentWebhook or ProcessRefundWebhook. This keeps the webhook response fast and allows the heavy processing to happen in the background. Laravel queue workers would handle these jobs using Redis or database queues.
+
+# Idempotency
+
+To ensure the same webhook is not processed multiple times, each payment event from the payment provider should include a unique event ID. This ID would be stored in the database in a payment_events or webhook_events table. Before processing a webhook, the system would check whether that event ID already exists. If it does, the request would simply be ignored.
+
+# Preventing Duplicate Processing
+
+Duplicate processing can also be prevented at the database level. Unique constraints can be applied to fields such as payment_provider_event_id or transaction_id. This ensures that even if a job runs twice, the database will reject duplicates.
+
+# Webhook Validation
+
+For security, webhook requests should be verified before processing. Most payment providers send a signature header. The application should validate this signature using a shared secret to confirm that the request really came from the payment provider and was not modified.
+
+# Retry Strategy
+
+If a queue job fails due to temporary issues such as network errors, Laravel’s built-in retry system can automatically retry the job several times with delays. This helps handle temporary failures without losing the event.
+
+# Failure Handling
+
+If a job continues to fail after multiple retries, it will be moved to Laravel’s failed jobs table. These failed jobs can be monitored and manually retried after the issue is resolved.
+
+# Database Design
+
+The database should include tables for payments, refunds, and webhook events. Storing webhook event IDs and transaction IDs ensures traceability and helps enforce idempotency. Proper indexing and unique constraints help maintain consistency and prevent duplicate records.
