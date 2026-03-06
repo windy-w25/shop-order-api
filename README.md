@@ -9,7 +9,7 @@ The system ensures data consistency using database transactions and row-level lo
 1. Clone the repository
 git clone https://github.com/windy-w25/shop-order-api.git
 
-cd shop-order-api
+    cd shop-order-api
 
 2. Install dependencies
 composer install
